@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<style>
+html,body {
+	margin: 0;
+	padding: 0;	
+}
+.wrapper {
+	width: 950px;
+	margin: 0 auto;	
+}
+.tm-menu {
+	background: #333;
+	width: 100%;
+	height:45px;
+	overflow:hidden;
+}
+.tm-menu a {
+	background: #CCC;
+	text-transform: uppercase; 
+	height:100%;
+	vertical-align:middle;
+	color:#fff;
+	text-decoration: none;
+	display:inline-block;
+	padding:5px;
+	margin-right:5px;	
+}
+
+svg rect {
+	fill: #09F;	
+}
+</style>
+<title>Untitled Document</title>
+</head>
+
+<body>
+<div class="wrapper">
+
+<script>//Variables toevoegen en standaardparameter instellen
+var width = 950, parameter = 'ME', ranking = 'MERanking', barHeight = 20;
+var margin = {top: 5, right: 15, bottom: 5, left: 15};
+
+//Menu items waaruit men kan kiezen. id is gelijk aan de namen in de JSON
+var menuItems  = [
+{id: 'ME', ranking: 'MERanking', name: 'Mannen Enkel'},
+{id: 'MD', ranking: 'MDRanking', name: 'Mannen Dubbel'},
+{id: 'GD', ranking: 'GDRanking', name: 'Gemengd Dubbel'}
+];
+
+var menu = d3.select("div.wrapper").append("div")
+			 .attr("class", "tm-menu")
+			 .attr("id", "menu");
+			 
+var svg  = d3.select("div.wrapper").append("svg")
+			 .attr("class", "chart")
+			 .attr("width", width);
+			 
+var x = d3.scale.linear().range([0, width-margin.left-margin.right-200]);
+/*
+	Function: clickMenu
+	Wordt aangeroepen als men op een menu item gedrukt wordt
+	d = data
+*/
+function clickMenu(d) {
+	//Check of de geklikte parameter al gelijk is aan d.id
+	if(parameter === d.id) {
+		return;	
+	}
+	
+	//Verwijder de class van alle divs in het menu
+	d3.select("#menu").selectAll('a').classed("tm-selected", false);
+	//en hang dezelfde class aan de geselecteerde parameter. Hierdoor kunnen nooit 2 items met deze class voorkomen
+	d3.select(this).classed("tm-selected", true);
+	
+	parameter = d.id;
+	ranking = d.ranking;
+	
+	updateChart();
+}
+
+function updateChart() {
+	var players = d3.select("svg.chart")
+					.selectAll("rect")
+					.transition()
+					.duration(1000)
+					.attr("width", function(d) {
+						return x(d[parameter]);
+					});
+	d3.select('svg.chart')
+	.selectAll('text.tm-ranking')
+	.transition()
+	.duration(1000)
+	.tween("text", function(d) {
+		var i = d3.interpolate(this.textContent, d[ranking]);
+		return function(t) {
+			this.textContent = Math.round(i(t));
+		};
+	});
+					
+	d3.select('svg.chart')
+	.selectAll('text.tm-value')
+	.transition()
+	.duration(1000)
+	.tween("text", function(d) {
+		var i = d3.interpolate(this.textContent, d[parameter]);
+		return function(t) {
+			this.textContent = Math.round(i(t));
+		};
+	})
+	.attr("x", function(d) {
+		return x(d[parameter])+125;	
+	});
+}
+
+d3.json("bmt_ranking.json", function(error, data) {
+	data.forEach(function(d) {
+		d[parameter] = +d[parameter];	
+	});
+	
+	x.domain(d3.extent(data, function(d) { return d[parameter]; })).nice();
+	var height = data.length * barHeight;
+	
+	svg.attr("height", height + margin.top + margin.bottom);
+	
+	var bar = svg.selectAll("g")
+    .data(data)
+  .enter().append("g")
+    .attr("transform", function(d, i) { return "translate(0," + i * barHeight + ")"; });
+	
+	bar.append("text")
+       .attr("x", 0)
+	   .attr("class", "tm-name")
+       .attr("y", barHeight / 2)
+       .attr("dy", ".35em")
+       .text(function(d) { return d.Lastname; });
+	   
+	bar.append("text")
+       .attr("x", width-50)
+	   .attr("class", "tm-ranking")
+       .attr("y", barHeight / 2)
+       .attr("dy", ".35em")
+       .text(function(d) { return d[ranking]; });
+	
+	bar.append("rect")
+	   .attr("width", function(d) { return x(d); })
+	   .attr("height", barHeight-1)
+	   .attr("x", 125);
+	   
+	bar.append("text")
+       .attr("x", function(d) { return x(d[parameter])+125; })
+	   .attr("class", "tm-value")
+       .attr("y", barHeight / 2)
+       .attr("dy", ".35em")
+       .text(function(d) { return d[parameter]; });
+	
+	updateChart();
+	
+	d3.select('#menu')
+				.selectAll('a')
+				.data(menuItems)
+				.enter()
+				.append('a')
+				.text(function(d) {return d.name;})
+				.attr("href", "#")
+				.classed('tm-selected', function(d, i) {return i==0;})
+				.on('click', clickMenu);
+});</script>
+<div style="display: block;">
+Bronnen: <a href="http://www.badminton.nl/uploads/docs/wedstrijdbadminton/nationale%20ranglijst/2014/juli/ME%20juli.xls">Mannenenkel Ranklijst Juli 2014 Badminton Nederland</a>, 
+<a href="http://www.badminton.nl/uploads/docs/wedstrijdbadminton/nationale%20ranglijst/2014/juli/MD%20juli.xls">Mannendubbel Ranklijst Juli 2014 Badminton Nederland</a>, 
+<a href="http://www.badminton.nl/uploads/docs/wedstrijdbadminton/nationale%20ranglijst/2014/juli/GD%20juli.xls">Gemengddubbel Ranklijst Juli 2014 Badminton Nederland</a>
+</div></div>
+</body>
+</html>

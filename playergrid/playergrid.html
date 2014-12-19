@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<style>
+
+body {
+    width: 1170px;
+}
+#playergrid {
+    height: 406px;
+    margin: 5px;
+    position: relative;
+}
+#grid #menu {
+    margin: 10px;
+}
+#grid #menu div {
+    background-color: #d9006b;
+    color: white;
+    cursor: pointer;
+    float: left;
+    margin: 1px;
+    padding: 5px;
+    text-align: center;
+    width: 150px;
+}
+#grid div.player {
+    background-color: #d9006b;
+    color: white;
+    cursor: pointer;
+    position: absolute;
+    text-align: center;
+}
+#grid #menu .selected, #grid #playergrid .selected {
+    background-color: #6a009d;
+}
+.group:after {
+    clear: both;
+    content: "";
+    display: table;
+}
+div.player div.name {
+    font-size: 11px;
+    font-weight: 400;
+    padding-top: 3px;
+}
+div.player div.value {
+    font-size: 28px;
+    font-weight: 400;
+    padding-top: 7px;
+}
+</style>
+</head>
+<body>
+<div id="grid">
+<div class="group" id="menu"></div>
+<div id="playergrid"></div>
+</div>
+<script>
+var radius = 50, padding = 1, cols = 11, parameter = "setsWon";
+var menu = [
+{id: 'setsWon', name: 'Sets Won'},
+{id: 'round', name: 'Round'},
+{id: 'points', name: 'Points'}
+]
+
+function nameId(n) {
+	return n.replace(/[\., ]/g, '');
+}
+
+function clickMenu(d) {
+	if (parameter === d.id)
+		return;
+
+	d3.select("#menu").selectAll('div').classed('selected', false);
+	d3.select(this).classed('selected', true);
+
+	parameter = d.id;
+
+	updateChart();
+}
+
+function updateChart() {
+	var players = d3.select('#playergrid')
+	.selectAll('div.player')
+	.sort(function(a, b) {return parameter === 'ranking' ? d3.ascending(a[parameter], b[parameter]) : d3.descending(a[parameter], b[parameter]);})
+	.transition()
+	.duration(1000)
+	.style('left', function(d, i) {
+		var col = i % cols;
+		var x = 2 * col * (radius + padding);
+		return x + 'px';
+	})
+	.style('top', function(d, i) {
+		var row = Math.floor(i / cols);
+		var y = 2 * row * (radius + padding);
+		return y + 'px';
+	});
+
+	d3.select('#playergrid')
+	.selectAll('div.player .value')
+	.transition()
+	.duration(1000)
+	.tween("text", function(d) {
+		var i = d3.interpolate(this.textContent, d[parameter]);
+		return function(t) {
+			this.textContent = Math.round(i(t));
+		};
+	});
+}
+
+d3.json("playergrid.json", function(error, data) {
+	var players = d3.select("#playergrid")
+	.selectAll("div")
+	.data(data)
+	.enter()
+	.append('div')
+	.attr('id', function(d) { return 'player-'+d.name;})
+					//.attr("class", function(d) { return d.category; })
+					.classed('player', true)
+					.style('width', 2 * radius + 'px')
+					.style('height', 2 * radius + 'px')
+					.on('click', function() {
+						d3.select(this).classed('selected', function() { 
+							return !d3.select(this).classed('selected')
+						});
+					});
+
+					players.append('div')
+					.classed('value', true)
+					.text(function(d) {return d[parameter];})
+					.style('width', 2 * radius);
+
+					players.append('div')
+					.classed('name', true)
+					.text(function(d) {return d.name;})
+					.style('width', 2 * radius);
+
+					updateChart();
+
+					d3.select('#menu')
+					.selectAll('div')
+					.data(menu)
+					.enter()
+					.append('div')
+					.text(function(d) {return d.name;})
+					.classed('selected', function(d, i) {return i==0;})
+					.on('click', clickMenu);
+				})
+</script>
+Bron: <a href="http://toernooi.nl/sport/event.aspx?id=3137A8FA-3216-474E-8AF7-08845FC0945A&event=1">Yonex Dutch Open 2014</a>
+</body>
+</html>
